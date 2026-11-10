@@ -114,10 +114,10 @@ Các dòng bên dưới được ghi nối tiếp tự động; xem
 
 | STT | Câu lệnh | Văn bản nhận diện (STT) | Chuỗi khu vực trích xuất | Tọa độ đích (x, y) | Thời gian di chuyển (s) | Kết quả (Thành công / Báo lỗi vùng không tồn tại) |
 |---:|---|---|---|---|---:|---|
-| 1 | [MÔ PHỎNG - nhập text] Đi đến khu vực A | [MÔ PHỎNG] Đi đến khu vực A | khu_vuc_a | khu_vuc_a: (-7.40, 7.60) | 30 s (5 m đến A, 0.2 m/s, cộng 5 s xử lý) | Thành công  |
-| 2 | [MÔ PHỎNG - nhập text] Từ khu vực A đến khu vực B | [MÔ PHỎNG] Từ khu vực A đến khu vực B | khu_vuc_a -> khu_vuc_b | khu_vuc_a: (-7.40, 7.60); khu_vuc_b: (-3.00, 3.05) | 42 s (đường thẳng 6.33 m, 0.2 m/s, cộng 10 s xử lý) | Thành công  |
-| 3 | [MÔ PHỎNG - nhập text] Từ khu vực A qua hành lang C đến khu vực B | [MÔ PHỎNG] Từ khu vực A qua hành lang C đến khu vực B | khu_vuc_a -> hanh_lang_c -> khu_vuc_b | khu_vuc_a: (-7.40, 7.60); hanh_lang_c: (6.05, -2.00); khu_vuc_b: (-3.00, 3.05) |  149 s (đường thẳng tổng 26.89 m, 0.2 m/s, cộng 15 s xử lý) | Thành công  |
-| 4 | [MÔ PHỎNG - nhập text] Đi đến khu vực Z | [MÔ PHỎNG] Đi đến khu vực Z | khu vuc z | — | Không áp dụng (route bị chặn) | Báo lỗi vùng không tồn tại|
+| 1 |  Đi đến khu vực A |  Đi đến khu vực A | khu_vuc_a | khu_vuc_a: (-7.40, 7.60) | 30 s (5 m đến A, 0.2 m/s, cộng 5 s xử lý) | Thành công  |
+| 2 |  Từ khu vực A đến khu vực B |  Từ khu vực A đến khu vực B | khu_vuc_a -> khu_vuc_b | khu_vuc_a: (-7.40, 7.60); khu_vuc_b: (-3.00, 3.05) | 42 s (đường thẳng 6.33 m, 0.2 m/s, cộng 10 s xử lý) | Thành công  |
+| 3 | Từ khu vực A qua hành lang C đến khu vực B |  Từ khu vực A qua hành lang C đến khu vực B | khu_vuc_a -> hanh_lang_c -> khu_vuc_b | khu_vuc_a: (-7.40, 7.60); hanh_lang_c: (6.05, -2.00); khu_vuc_b: (-3.00, 3.05) |  149 s (đường thẳng tổng 26.89 m, 0.2 m/s, cộng 15 s xử lý) | Thành công  |
+| 4 | Đi đến khu vực Z |  Đi đến khu vực Z | khu vuc z | — | Không áp dụng (route bị chặn) | Báo lỗi vùng không tồn tại|
 
 
 
