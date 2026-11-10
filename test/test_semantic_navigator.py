@@ -25,7 +25,6 @@ from visualization_msgs.msg import Marker
 from tb4_voice_nav.semantic_navigator import (
     _AMCL_POSE_QOS,
     _decode_route,
-    _decode_route_command,
     _load_regions,
     _make_navigation_goal,
     _make_label_markers,
@@ -60,25 +59,6 @@ def test_decode_route_preserves_order():
         'khu_vuc_b',
     ]
     assert _decode_route(json.dumps(route), _regions()) == route
-
-
-def test_decode_route_command_preserves_voice_report_metadata():
-    command = {
-        'test_id': 'sample-id',
-        'command': 'Đi đến khu vực A',
-        'transcription': 'Đi đến khu vực A',
-        'route': ['khu_vuc_a'],
-    }
-
-    route, metadata = _decode_route_command(
-        json.dumps(command, ensure_ascii=False),
-        _regions(),
-    )
-
-    assert route == ['khu_vuc_a']
-    assert metadata['test_id'] == 'sample-id'
-    assert metadata['command'] == 'Đi đến khu vực A'
-    assert metadata['transcription'] == 'Đi đến khu vực A'
 
 
 def test_navigation_goal_uses_nav2_action_goal_type():

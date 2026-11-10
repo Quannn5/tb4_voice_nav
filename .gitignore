@@ -6,3 +6,5 @@ __pycache__/
 .pytest_cache/
 .coverage
 coverage.xml
+report_assets/
+BAO_CAO_BAI_7.docx

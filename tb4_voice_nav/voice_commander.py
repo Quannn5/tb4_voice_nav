@@ -6,7 +6,6 @@ import re
 import tempfile
 import threading
 import unicodedata
-import uuid
 import wave
 from pathlib import Path
 from typing import Any
@@ -15,9 +14,6 @@ import rclpy
 import yaml
 from rclpy.node import Node
 from std_msgs.msg import String
-
-from tb4_voice_nav.reporting import append_test_result, default_results_path
-
 
 _UNKNOWN_DESTINATION = re.compile(
     r'\b(?:khu vuc|phong|hanh lang)\s+([a-z0-9]+)\b'
@@ -128,10 +124,6 @@ class VoiceCommander(Node):
         super().__init__('voice_commander')
         self.declare_parameter('use_text_input', False)
         self.declare_parameter('semantic_regions_file', str(_default_config_path()))
-        self.declare_parameter(
-            'report_results_file',
-            str(default_results_path()),
-        )
         self.declare_parameter('record_seconds', 5.0)
         self.declare_parameter('stt_backend', 'google')
         self.declare_parameter('offline_fallback', 'vosk')
@@ -159,9 +151,6 @@ class VoiceCommander(Node):
         self.whisper_model_name = str(
             self.get_parameter('whisper_model').value
         )
-        self.report_results_file = Path(
-            str(self.get_parameter('report_results_file').value)
-        ).expanduser()
         self._offline_model: Any = None
 
         if not 4.0 <= self.record_seconds <= 5.0:
@@ -300,58 +289,10 @@ class VoiceCommander(Node):
             self.get_logger().error(f'Speech recognition failed: {error}')
             return ''
 
-    def _append_test_result(
-        self,
-        transcription: str,
-        route: list[str],
-        outcome: str,
-        unknown_mentions: list[str] | None = None,
-    ) -> None:
-        region_by_id = {
-            region.get('route_id'): region
-            for region in self.regions
-            if isinstance(region, dict)
-        }
-        coordinates = []
-        for route_id in route:
-            region = region_by_id.get(route_id)
-            pose = region.get('pose') if region else None
-            if isinstance(pose, list) and len(pose) >= 2:
-                coordinates.append(
-                    f"{route_id}: ({float(pose[0]):.2f}, {float(pose[1]):.2f})"
-                )
-        route_display = ' -> '.join(route)
-        if unknown_mentions:
-            route_display = ' -> '.join(
-                [route_display, *unknown_mentions]
-            ).strip(' ->')
-        try:
-            append_test_result(
-                self.report_results_file,
-                {
-                    'command': transcription or '(không nhận dạng được)',
-                    'transcription': transcription or '(không nhận dạng được)',
-                    'route': route_display or '(không trích xuất được)',
-                    'coordinates': '; '.join(coordinates) or '—',
-                    'duration': '—',
-                    'outcome': outcome,
-                },
-            )
-        except OSError as error:
-            self.get_logger().error(
-                f'Cannot append test result to '
-                f'{self.report_results_file}: {error}'
-            )
-
     def process_transcription(self, text: str) -> bool:
         """Validate a transcription and publish its JSON route if valid."""
         if not text:
             self.get_logger().warning('No speech or text command was provided.')
-            self._append_test_result(
-                text,
-                [],
-                'Báo lỗi: không nhận dạng được câu lệnh',
-            )
             return False
 
         self.get_logger().info(f'Recognized: {text}')
@@ -362,35 +303,16 @@ class VoiceCommander(Node):
                 + ', '.join(unknown_mentions)
                 + '. Command cancelled; nothing was published.'
             )
-            self._append_test_result(
-                text,
-                route,
-                'Báo lỗi vùng không tồn tại',
-                unknown_mentions,
-            )
             return False
         if not route:
             self.get_logger().error(
                 'No configured destination was found; '
                 'nothing was published.'
             )
-            self._append_test_result(
-                text,
-                route,
-                'Báo lỗi: không trích xuất được khu vực',
-            )
             return False
 
         message = String()
-        message.data = json.dumps(
-            {
-                'test_id': str(uuid.uuid4()),
-                'command': text,
-                'transcription': text,
-                'route': route,
-            },
-            ensure_ascii=False,
-        )
+        message.data = json.dumps(route, ensure_ascii=False)
         self.publisher.publish(message)
         self.get_logger().info(
             f'Published route: {json.dumps(route, ensure_ascii=False)}'

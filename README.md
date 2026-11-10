@@ -17,7 +17,7 @@ TurtleBot 4.
 ### Data flow
 
 ```text
-Microphone (Enter / push-to-talk)        Terminal text (debug mode)
+Microphone (GUI button / 5 seconds)      Terminal text (debug mode)
                   \                           /
                    +------ voice_commander ---+
                               |
@@ -71,22 +71,6 @@ y_map = -10 + (402 - 1 - 49) * 0.05 =  7.60 m
 
 The pose, aliases, and `route_id` values consumed by the nodes are stored in
 [`config/semantic_regions.yaml`](config/semantic_regions.yaml).
-
-### Scientific report assets
-
-Running `map_segmenter` also creates `report_assets/figures/` and
-`report_assets/data/` alongside the input map's parent directory by default.
-Pass `--report-dir PATH` to choose another output directory. The figures
-`01_raw_map.png` through `06_final_semantic_map.png` are exported at 300 DPI;
-the last figure distinguishes the geometric centroid (`x`) from the safe
-navigation goal (blue circle). Region area is computed as pixel count times
-resolution squared, and safety distance is the distance-transform value at the
-safe goal multiplied by resolution.
-
-The report tables are `region_statistics.csv` (UTF-8 with BOM for spreadsheet
-compatibility) and `region_table.tex` (UTF-8 LaTeX source). The LaTeX table
-contains Vietnamese text and can be included in a Unicode-capable LaTeX
-document such as one compiled with XeLaTeX.
 
 The checked-in map has five distributed destinations. “Khu vực C” is the
 upper-right area of the map; the other destinations are Khu vực A (upper-left),
@@ -157,7 +141,7 @@ ros2 launch tb4_voice_nav voice_nav.launch.py
 ```
 
 This starts `semantic_navigator` with `use_sim_time: true` and prints the
-instructions for the interactive voice process.
+instructions for the voice-control process.
 
 ### Terminal 4: voice commands
 
@@ -181,12 +165,6 @@ Google Speech Recognition (`vi-VN`) is the default and needs network access.
 Vosk or faster-whisper can be selected as an offline backend; install the
 chosen Python package and model before configuring the corresponding
 `stt_backend`, `offline_fallback`, or `vosk_model_path` parameter.
-
-Each input attempt is recorded in
-[`report_assets/data/test_results.md`](report_assets/data/test_results.md):
-unknown or unrecognized commands are logged by `voice_commander`, while valid
-routes are logged by `semantic_navigator` when navigation finishes. The output
-path can be overridden on either node with the `report_results_file` parameter.
 
 ## Topics and parameters
 

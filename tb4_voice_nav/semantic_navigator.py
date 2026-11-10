@@ -21,9 +21,6 @@ from rclpy.task import Future
 from std_msgs.msg import String
 from visualization_msgs.msg import Marker, MarkerArray
 
-from tb4_voice_nav.reporting import append_test_result, default_results_path
-
-
 _ARRIVAL_TOLERANCE = 0.4
 _FEEDBACK_LOG_INTERVAL = 2.0
 _AMCL_POSE_QOS = QoSProfile(
@@ -103,24 +100,6 @@ def _decode_route(
     return route
 
 
-def _decode_route_command(
-    payload: str,
-    regions: dict[str, dict[str, Any]],
-) -> tuple[list[str], dict[str, str]]:
-    decoded = json.loads(payload)
-    metadata: dict[str, str] = {}
-    if isinstance(decoded, dict):
-        for key in ('test_id', 'command', 'transcription'):
-            value = decoded.get(key, '')
-            if not isinstance(value, str):
-                raise ValueError(f'Route metadata field {key!r} must be a string.')
-            metadata[key] = value
-        route_payload = json.dumps(decoded.get('route'))
-    else:
-        route_payload = payload
-    return _decode_route(route_payload, regions), metadata
-
-
 def _make_navigation_goal(pose: PoseStamped) -> NavigateToPose.Goal:
     goal = NavigateToPose.Goal()
     goal.pose = pose
@@ -196,15 +175,8 @@ class SemanticNavigator(BasicNavigator):
             'semantic_regions_file',
             str(_default_config_path()),
         )
-        self.declare_parameter(
-            'report_results_file',
-            str(default_results_path()),
-        )
         config_path = Path(
             str(self.get_parameter('semantic_regions_file').value)
-        ).expanduser()
-        self.report_results_file = Path(
-            str(self.get_parameter('report_results_file').value)
         ).expanduser()
         try:
             self.regions = _load_regions(config_path)
@@ -236,8 +208,6 @@ class SemanticNavigator(BasicNavigator):
 
         self._current_pose: PoseStamped | None = None
         self._route: list[str] = []
-        self._route_metadata: dict[str, str] = {}
-        self._route_started_at: float | None = None
         self._route_index = 0
         self._goal_handle: ClientGoalHandle | None = None
         self._goal_request_pending = False
@@ -349,10 +319,7 @@ class SemanticNavigator(BasicNavigator):
 
     def _route_callback(self, message: String) -> None:
         try:
-            route, metadata = _decode_route_command(
-                message.data,
-                self.regions,
-            )
+            route = _decode_route(message.data, self.regions)
         except (json.JSONDecodeError, ValueError) as error:
             self.get_logger().error(f'Invalid route command: {error}')
             return
@@ -361,17 +328,9 @@ class SemanticNavigator(BasicNavigator):
             self.get_logger().warning(
                 'A route is already in progress; the new route was rejected.'
             )
-            self._append_test_result(
-                route,
-                metadata,
-                'Báo lỗi: robot đang thực hiện lộ trình khác',
-                0.0,
-            )
             return
 
         self._route = route
-        self._route_metadata = metadata
-        self._route_started_at = time.monotonic()
         self._route_index = 0
         self._latest_distance_remaining = None
         self._preview_delete_pending = False
@@ -397,7 +356,6 @@ class SemanticNavigator(BasicNavigator):
 
         if self._route_index >= len(self._route):
             self.get_logger().info('Route completed successfully.')
-            self._finish_test_result('Thành công')
             self._clear_route()
             return
 
@@ -457,12 +415,10 @@ class SemanticNavigator(BasicNavigator):
             goal_handle = future.result()
         except Exception as error:
             self.get_logger().error(f'Failed to send Nav2 goal: {error}')
-            self._finish_test_result('Báo lỗi: không gửi được goal Nav2')
             self._clear_route()
             return
         if not goal_handle.accepted:
             self.get_logger().error('Nav2 rejected the destination goal.')
-            self._finish_test_result('Báo lỗi: Nav2 từ chối goal')
             self._clear_route()
             return
 
@@ -494,7 +450,6 @@ class SemanticNavigator(BasicNavigator):
             result = future.result()
         except Exception as error:
             self.get_logger().error(f'Failed to receive Nav2 result: {error}')
-            self._finish_test_result('Báo lỗi: không nhận được kết quả Nav2')
             self._clear_route()
             return
 
@@ -506,71 +461,15 @@ class SemanticNavigator(BasicNavigator):
             return
         if result.status == GoalStatus.STATUS_CANCELED:
             self.get_logger().warning('Nav2 navigation was canceled.')
-            outcome = 'Báo lỗi: điều hướng bị hủy'
         else:
             self.get_logger().error(
                 f'Nav2 navigation failed with action status {result.status}.'
             )
-            outcome = f'Báo lỗi Nav2 (status {result.status})'
-        self._finish_test_result(outcome)
         self._clear_route()
-
-    def _append_test_result(
-        self,
-        route: list[str],
-        metadata: dict[str, str],
-        outcome: str,
-        duration: float,
-    ) -> None:
-        coordinates = []
-        for route_id in route:
-            region = self.regions.get(route_id)
-            if region is not None:
-                x, y, _ = region['pose']
-                coordinates.append(
-                    f"{region['name']}: ({float(x):.2f}, {float(y):.2f})"
-                )
-        try:
-            append_test_result(
-                self.report_results_file,
-                {
-                    'command': metadata.get('command', 'Không rõ'),
-                    'transcription': metadata.get(
-                        'transcription',
-                        'Lệnh ROS trực tiếp',
-                    ),
-                    'route': ' -> '.join(route),
-                    'coordinates': '; '.join(coordinates) or '—',
-                    'duration': f'{duration:.2f}',
-                    'outcome': outcome,
-                },
-            )
-        except OSError as error:
-            self.get_logger().error(
-                f'Cannot append test result to '
-                f'{self.report_results_file}: {error}'
-            )
-
-    def _finish_test_result(self, outcome: str) -> None:
-        if not self._route:
-            return
-        duration = (
-            time.monotonic() - self._route_started_at
-            if self._route_started_at is not None
-            else 0.0
-        )
-        self._append_test_result(
-            self._route,
-            self._route_metadata,
-            outcome,
-            duration,
-        )
 
     def _clear_route(self) -> None:
         self._route.clear()
         self._route_index = 0
-        self._route_metadata = {}
-        self._route_started_at = None
         self._goal_handle = None
         self._goal_request_pending = False
         self._latest_distance_remaining = None

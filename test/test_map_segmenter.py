@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import csv
 import math
 from pathlib import Path
 
 import cv2
 import numpy as np
 import yaml
-from PIL import Image
 
 from tb4_voice_nav.map_segmenter import _pixel_to_map, process_map
 
@@ -38,8 +36,6 @@ def test_process_map_writes_five_regions(tmp_path):
     map_yaml_path = maps_directory / 'map.yaml'
     output_image_path = maps_directory / 'segmented_map.png'
     output_yaml_path = tmp_path / 'config' / 'semantic_regions.yaml'
-    report_directory = tmp_path / 'report_assets'
-
     image = np.zeros((240, 320), dtype=np.uint8)
     image[10:230, 10:310] = 254
     image[115:125, 100:220] = 0
@@ -59,7 +55,6 @@ def test_process_map_writes_five_regions(tmp_path):
         map_yaml_path,
         output_image_path,
         output_yaml_path,
-        report_directory=report_directory,
     )
 
     assert len(regions) == 5
@@ -79,36 +74,6 @@ def test_process_map_writes_five_regions(tmp_path):
     ]
     assert all(len(region['polygon']) >= 3 for region in regions)
     assert output_image_path.is_file()
-    figure_names = [
-        '01_raw_map.png',
-        '02_binary_threshold.png',
-        '03_morphology.png',
-        '04_distance_transform.png',
-        '05_watershed_markers.png',
-        '06_final_semantic_map.png',
-    ]
-    for figure_name in figure_names:
-        figure_path = report_directory / 'figures' / figure_name
-        assert figure_path.is_file()
-        with Image.open(figure_path) as figure:
-            assert abs(figure.info['dpi'][0] - 300) < 1
-            assert abs(figure.info['dpi'][1] - 300) < 1
-
-    csv_path = report_directory / 'data' / 'region_statistics.csv'
-    tex_path = report_directory / 'data' / 'region_table.tex'
-    assert tex_path.is_file()
-    with csv_path.open(encoding='utf-8-sig', newline='') as csv_file:
-        rows = list(csv.DictReader(csv_file))
-    assert len(rows) == 5
-    assert set(rows[0]) == {
-        'Region ID',
-        'Tên khu vực',
-        'Diện tích (pixel)',
-        'Diện tích thực (m²)',
-        'Tọa độ tâm Pixel (u, v)',
-        'Tọa độ đích ROS (x, y, yaw) (m)',
-        'Khoảng cách an toàn tới vật cản gần nhất (m)',
-    }
     saved_data = yaml.safe_load(output_yaml_path.read_text(encoding='utf-8'))
     assert len(saved_data['regions']) == 5
     assert saved_data['frame_id'] == 'map'
