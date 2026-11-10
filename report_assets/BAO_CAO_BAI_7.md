@@ -123,17 +123,7 @@ Các dòng bên dưới được ghi nối tiếp tự động; xem
 
 ### Ảnh minh chứng chạy thực tế
 
-**1. RViz2 hiển thị Marker và tên các khu vực**
 
-> **Vị trí chèn ảnh:** chụp RViz2 khi các Marker tên vùng và điểm đích đang hiển thị.
-
-**2. Robot di chuyển theo quỹ đạo Nav2 trên Gazebo/RViz2**
-
-> **Vị trí chèn ảnh:** chụp robot trong lúc chạy route và đường đi dự kiến/thực tế trên RViz2.
-
-**3. Terminal báo lỗi vùng không tồn tại**
-
-> **Vị trí chèn ảnh:** chụp log sau khi thử một tên vùng không có trong cấu hình, ví dụ “khu vực Z”.
 
 ## 5. Kết luận
 
